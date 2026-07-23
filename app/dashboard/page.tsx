@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
-import { logoutStudent } from "../actions"; // Your existing logout action
+import { logoutStudent } from "../actions"; 
 import StudentPortalUI from "./StudentPortalUI";
 
 export const dynamic = "force-dynamic";
@@ -13,18 +13,15 @@ export default async function StudentDashboard() {
   const batchName = cookieStore.get("student_batch")?.value || "General Batch";
   const instituteId = cookieStore.get("institute_id")?.value;
 
-  // Security barrier: Kick to login if no cookies exist
   if (!studentId || !instituteId) {
     redirect("/");
   }
 
-  // Bypass RLS for secure, read-only student access using the service key
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // 1. Fetch Student Details
   const { data: student } = await supabase
     .from("students")
     .select("name, full_name")
@@ -33,21 +30,19 @@ export default async function StudentDashboard() {
 
   const studentName = student?.name || student?.full_name || "Student";
 
-  // 2. Fetch Material Folders for this Institute
   const { data: folders } = await supabase
     .from("study_folders")
     .select("*")
     .eq("institute_id", instituteId)
     .order("created_at", { ascending: true });
 
-  // 3. Fetch All Materials
   const { data: materials } = await supabase
     .from("study_materials")
     .select("*")
     .eq("institute_id", instituteId)
     .order("created_at", { ascending: false });
 
-  // 4. Fetch Published Exams strictly for their Batch
+  // 🔥 CRITICAL FIX: The query matching the new "All Batches" string
   const { data: exams } = await supabase
     .from("exams")
     .select("id, title, duration_minutes, exam_type, created_at, total_marks")
@@ -56,7 +51,6 @@ export default async function StudentDashboard() {
     .in("batch_target", [batchName, "All Batches"]) 
     .order("created_at", { ascending: false });
 
-  // 5. Fetch Past Scores
   const { data: scores } = await supabase
     .from("test_scores")
     .select("*")
