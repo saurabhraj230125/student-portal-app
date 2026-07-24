@@ -33,19 +33,20 @@ export async function submitExamAction(examId: string, studentAnswers: Record<st
 
   const { data: examData } = await supabase.from("exams").select("title, total_marks").eq("id", examId).single();
 
-  // 🔥 SAVE TO DATABASE: Including the tab switches
   const { error: insertError } = await supabase.from("test_scores").insert({
     student_id: studentId,
     test_name: examData?.title || "Online Examination",
     score: score,
     total_marks: examData?.total_marks || (questions.length * 4),
-    tab_switches: tabSwitches, // Tracking cheating!
+    tab_switches: tabSwitches || 0,
     test_date: new Date().toISOString()
   });
 
   if (insertError) return { error: "Failed to save exam results." };
 
-  revalidatePath("/dashboard");
-  // 🔥 BLIND RETURN: Do not send the score back to the client!
+  // 🔥 CRITICAL CACHE FIX: Refresh BOTH dashboards instantly!
+  revalidatePath("/dashboard");          // Refresh Student view
+  revalidatePath("/dashboard/exams");    // Refresh Owner Analytics view
+  
   return { success: true };
 }
