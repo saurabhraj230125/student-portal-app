@@ -17,6 +17,7 @@ export default async function StudentDashboard() {
     redirect("/");
   }
 
+  // Use Service Role to bypass RLS securely for data fetching
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -30,27 +31,30 @@ export default async function StudentDashboard() {
 
   const studentName = student?.name || student?.full_name || "Student";
 
+  // Fetch Folders
   const { data: folders } = await supabase
     .from("study_folders")
     .select("*")
     .eq("institute_id", instituteId)
     .order("created_at", { ascending: true });
 
+  // Fetch Materials
   const { data: materials } = await supabase
     .from("study_materials")
     .select("*")
     .eq("institute_id", instituteId)
     .order("created_at", { ascending: false });
 
-  // 🔥 CRITICAL FIX: The query matching the new "All Batches" string
+  // 🔥 CRITICAL FIX: Added 'results_published' to the select query!
   const { data: exams } = await supabase
     .from("exams")
-    .select("id, title, duration_minutes, exam_type, created_at, total_marks")
+    .select("id, title, duration_minutes, exam_type, created_at, total_marks, results_published")
     .eq("institute_id", instituteId)
     .eq("is_published", true)
     .in("batch_target", [batchName, "All Batches"]) 
     .order("created_at", { ascending: false });
 
+  // Fetch Scores
   const { data: scores } = await supabase
     .from("test_scores")
     .select("*")
